@@ -7,18 +7,19 @@ import HOC from "../../layout/HOC";
 import axios from "axios";
 import { toast } from "react-toastify";
 import Table from "react-bootstrap/Table";
-import Form from "react-bootstrap/Form";
 import { useNavigate } from "react-router-dom";
-import Spin from "../../../Component/Spinner";
+import Form from "react-bootstrap/Form";
+import Spin from "../../../../../Component/Spinner";
 
-const Fedd = () => {
+const Product = () => {
   const [popup, setPopup] = useState(false);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
-  const [parentC, setPC] = useState([]);
+  const [parentC, setParentC] = useState([]);
+  const [editP, setEditP] = useState(false);
+  const [id, setId] = useState("");
 
-  //Add product
   const [name, setName] = useState("");
   const [description, setDesc] = useState("");
   const [Stock, setStock] = useState("");
@@ -27,10 +28,9 @@ const Fedd = () => {
   const [category, setCat] = useState("");
   const [coloursAvailable, setColor] = useState([]);
   const [sizesAvailable, setSize] = useState([]);
-  //-------------------------------------
 
-  //Vendor Authorization
-  const Vendor = localStorage.getItem("VendorToken");
+  //Admin Token
+  const token = localStorage.getItem("token");
 
   //Fetch products
 
@@ -38,10 +38,10 @@ const Fedd = () => {
     setLoading(true);
     try {
       const { data } = await axios.get(
-        "https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/vender/products/",
+        "https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/admin/products",
         {
           headers: {
-            Authorization: `Bearer ${Vendor}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -57,26 +57,11 @@ const Fedd = () => {
   useEffect(() => {
     fetchproducts();
     fetchParentCategory();
-  }, [axios, Vendor, toast]);
+  }, [axios, token, toast]);
 
   //--------------------------------------------------------------------------------
 
-  // Parent Categories
-
-  const fetchParentCategory = async () => {
-    try {
-      const { data } = await axios.get(
-        "https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/getAllCategory"
-      );
-      setPC(data);
-    } catch (err) {
-      console.log(err);
-    }
-  };
-
-  //---------------------------------------------------------------------
-
-  // Add Product
+  //add Product
 
   const addProduct = async (e) => {
     e.preventDefault();
@@ -93,11 +78,11 @@ const Fedd = () => {
     fd.append("coloursAvailable", coloursAvailable);
     fd.append("sizesAvailable", sizesAvailable);
 
-    let auth = { headers: { Authorization: `Bearer ${Vendor}` } };
+    let auth = { headers: { Authorization: `Bearer ${token}` } };
 
     try {
       const { data } = await axios.post(
-        "https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/vender/product/new",
+        "https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/admin/product/new",
         fd,
         auth
       );
@@ -111,29 +96,75 @@ const Fedd = () => {
     }
   };
 
-  //--------------------------------------------------------
+  //---------------------------------------------------------------------------------
 
-  //delete Product
+  //Delete Product
 
   const deleteProduct = async (id) => {
+    let auth = { headers: { Authorization: `Bearer ${token}` } };
     try {
       const data = await axios.delete(
-        `https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/vender/product/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${Vendor}`,
-          },
-        }
+        `https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/admin/product/${id}`,
+        auth
       );
       toast.success("Product Deleted SuccessFully");
       fetchproducts();
     } catch (err) {
       console.log(err);
-      toast.error("Please try again after aome tome");
+      toast.error("Network Error Please try again later");
     }
   };
 
-  //------------------------------------------------------------------------------
+  // ----------------------------------------------------------------------
+
+  // Parent Categories
+
+  const fetchParentCategory = async () => {
+    try {
+      const { data } = await axios.get(
+        "https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/getAllCategory"
+      );
+      setParentC(data);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  //---------------------------------------------------------------------
+
+  // Edit product
+  const editProduct = async (e) => {
+    e.preventDefault();
+
+    const fd = {
+      name,
+      description,
+      price,
+      category,
+      Stock,
+      coloursAvailable,
+      sizesAvailable,
+    };
+
+    let auth = { headers: { Authorization: `Bearer ${token}` } };
+
+    try {
+      const { data } = await axios.put(
+        `https://ou6tgbmd2b.execute-api.ap-south-1.amazonaws.com/dev/api/v1/admin/product/${id}`,
+        fd,
+        auth
+      );
+      console.log(data);
+      toast.success("Product Edit successfully");
+      fetchproducts();
+      setPopup(false);
+    } catch (err) {
+      console.log(err);
+      toast.error(err?.response?.data?.message);
+    }
+  };
+
+  // -------------------------------------------------------------------------
 
   return (
     <>
@@ -145,6 +176,7 @@ const Fedd = () => {
           <button
             onClick={() => {
               setPopup(!popup);
+              setEditP(false);
             }}
             className="md:py-2 px-3 md:px-4 py-1 rounded-sm bg-[rgb(241,146,46)] text-white tracking-wider"
           >
@@ -163,7 +195,7 @@ const Fedd = () => {
           <div className="bg-slate-100 overflow-y-auto  lg:w-3/6  md:w-4/6 w-5/6 mx-auto  rounded-lg">
             <div className="flex sticky top-0 py-3 px-5 bg-slate-100 justify-between">
               <span className=" font-semibold text-[rgb(241,146,46)] ">
-                Add Product
+                {editP ? "Edit Product" : " Add Product"}
               </span>
               <div className="text-[rgb(241,146,46)] py-0.5 text-2xl cursor-pointer font-medium tracking-wider">
                 <IoMdClose
@@ -175,20 +207,23 @@ const Fedd = () => {
             </div>
             <form
               className="grid  grid-cols-1 gap-x-7 gap-y-4 p-4"
-              onSubmit={addProduct}
+              onSubmit={editP ? editProduct : addProduct}
               style={{ color: "black" }}
             >
-              <div className="inline-flex  w-full flex-col">
-                <label className="text-gray-800 mb-1.5 tracking-wider font-semibold text-sm">
-                  Product Image
-                </label>
-                <input
-                  type="file"
-                  onChange={(e) => setImages(e.target.files)}
-                  multiple
-                />
-              </div>
-
+              {editP ? (
+                ""
+              ) : (
+                <div className="inline-flex  w-full flex-col">
+                  <label className="text-gray-800 mb-1.5 tracking-wider font-semibold text-sm">
+                    Product Image
+                  </label>
+                  <input
+                    type="file"
+                    onChange={(e) => setImages(e.target.files)}
+                    multiple
+                  />
+                </div>
+              )}
               <div className="inline-flex  w-full flex-col">
                 <label className="text-gray-800 mb-1.5 tracking-wider font-semibold text-sm">
                   Product Name
@@ -275,7 +310,7 @@ const Fedd = () => {
                 type="submit"
                 className="bg-[rgb(241,146,46)] flex items-center justify-center cursor-pointer w-40 hover:bg-[rgb(241,146,46)] py-1 rounded-full"
               >
-                Add Products
+                {editP ? "Edit" : " Add"}
               </button>
             </form>
           </div>
@@ -302,7 +337,7 @@ const Fedd = () => {
               <Spin />
             ) : (
               <tbody>
-                {data?.data?.map((i, index) => (
+                {data?.products?.map((i, index) => (
                   <tr key={index} style={{ marginTop: "1%" }}>
                     <td>
                       {i.images.length === 0 ? (
@@ -311,14 +346,14 @@ const Fedd = () => {
                             "https://www.legrand.co.in/ecatalogue/images/products/default.jpg"
                           }
                           className="img-fluid img-thumbnail"
-                          alt="No Image Rendering"
+                          alt=""
                         />
                       ) : (
                         i.images?.map((i, index) => (
                           <img
                             src={i.url}
                             key={index}
-                            alt={"Product Image"}
+                            alt={""}
                             className="img-fluid img-thumbnail "
                           />
                         ))
@@ -348,12 +383,14 @@ const Fedd = () => {
                           color="blue"
                           cursor="pointer"
                           onClick={() => {
+                            setId(i._id);
                             setPopup(!popup);
+                            setEditP(true);
                           }}
                         />
                         <AiFillEye
                           cursor="pointer"
-                          onClick={() => navigate(`/viewProduct/${i._id}`)}
+                          onClick={() => navigate(`/proDet/${i._id}`)}
                         />
                         <AiFillDelete
                           color="red"
@@ -373,6 +410,4 @@ const Fedd = () => {
   );
 };
 
-export default HOC(Fedd);
-
-//viewProduct
+export default HOC(Product);
